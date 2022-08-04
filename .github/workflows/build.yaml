@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ "ft/ci" ]
 
+env:
+  CASK_VERSION: v0.8.8
+    
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -25,7 +28,7 @@ jobs:
     - name: Install cask
       run: |
         mkdir -p $HOME/.local/bin
-        git clone https://github.com/cask/cask.git /tmp/cask
+        git clone https://github.com/cask/cask.git -b ${{ env.CASK_VERSION }} /tmp/cask
         cd /tmp/cask
         make install
     - name: Download plantuml.jar
