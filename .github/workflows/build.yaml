@@ -24,10 +24,13 @@ jobs:
         sudo apt-get install -y git emacs-nox curl
     - name: Install cask
       run: |
+        mkdir -p $HOME/.local/bin
         git clone https://github.com/cask/cask.git /tmp/cask
         cd /tmp/cask
         make install
     - name: Download plantuml.jar
       run: ./bin/download-plantuml.sh
     - name: Build & Test
-      run: make
+      run: |
+        export PATH=$PATH:$HOME/.local/bin
+        make
