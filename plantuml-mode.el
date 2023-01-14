@@ -103,6 +103,7 @@
 (defvar plantuml-mode-map
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "C-c C-c") 'plantuml-preview)
+    (define-key keymap (kbd "C-c C-p") 'plantuml-export)
     keymap)
   "Keymap for plantuml-mode.")
 
@@ -545,6 +546,65 @@ Uses prefix (as PREFIX) to choose where to display it:
   (if mark-active
       (plantuml-preview-region prefix (region-beginning) (region-end))
     (plantuml-preview-buffer prefix)))
+
+;; export to file function
+(defun plantuml--executable-export-file (fname)
+  "Compile the graph and preview it to FNAME in an other buffer."
+  (let ((f-name (concat (f-no-ext fname) ".png"))
+	(command-result (string-trim (shell-command-to-string (concat plantuml-executable-path " -t" plantuml-output-type " " (shell-quote-argument (expand-file-name fname)) " -o " (shell-quote-argument (f-dirname (expand-file-name fname))))))))
+    (if (string-prefix-p "Exception:" command-result)
+	(message command-result)
+      (progn
+	(sleep-for 0 5)
+	(with-selected-window (selected-window)
+	  (switch-to-buffer-other-window (find-file-noselect f-name t))
+	  ;; I get "changed on disk; really edit the buffer?" prompt w/o this
+	  (sleep-for 0 50)
+	  (revert-buffer t t))))))
+
+(defun plantuml--jar-export-file (fname)
+  "Compile the graph and preview it to FNAME in an other buffer."
+  (let ((f-name (concat (f-no-ext fname) ".png"))
+	(command-result (string-trim (shell-command-to-string (concat plantuml-java-command plantuml-java-args " -t" plantuml-output-type " " (shell-quote-argument (expand-file-name fname)) " -o " (shell-quote-argument (f-dirname (expand-file-name fname))))))))
+    (if (string-prefix-p "Exception:" command-result)
+	(message command-result)
+      (progn
+	(sleep-for 0 5)
+	(with-selected-window (selected-window)
+	  (switch-to-buffer-other-window (find-file-noselect f-name t))
+	  ;; I get "changed on disk; really edit the buffer?" prompt w/o this
+	  (sleep-for 0 50)
+	  (revert-buffer t t))))))
+
+(defun plantuml--server-export-file (fname)
+  "Compile the graph and preview it to FNAME"
+  (let* ((f-name (concat (f-no-ext fname) ".png"))
+	(string (with-temp-buffer
+		  (insert-file-contents fname)
+		  (buffer-string)
+		  ))
+	(url-request-location (plantuml-server-encode-url string)))
+    (progn
+      (url-copy-file url-request-location f-name t)
+      (with-selected-window (selected-window)
+	(switch-to-buffer-other-window (find-file-noselect f-name t))
+	;; I get "changed on disk; really edit the buffer?" prompt w/o this
+	(sleep-for 0 50)
+	(revert-buffer t t)))))
+
+(defun plantuml-export ()
+  "Export file dispatch function"
+  (interactive)
+  (save-buffer)				; save buffer before exporting
+  (let ((fname (buffer-file-name)))
+    (if fname
+	(pcase plantuml-exec-mode
+	  ('jar    (plantuml--jar-export-file fname))
+	  ('server (plantuml--server-export-file fname))
+	  ('executable (plantuml--executable-export-file fname)))
+      (user-error "Preview export requires a file backed buffer")
+  )))
+
 
 (defun plantuml-init-once (&optional mode)
   "Ensure initialization only happens once.  Use exec mode MODE to load the language details or by first querying `plantuml-get-exec-mode'."
