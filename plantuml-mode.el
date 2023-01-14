@@ -422,12 +422,19 @@ Put the result into buffer BUF.  Window is selected according to PREFIX:
                               (error "PLANTUML Preview failed: %s" event))
                             (plantuml-update-preview-buffer prefix buf)))))
 
+(defun plantuml--hex-encode-string (str)
+  (let ((parts '()))
+    (dotimes (i (length str))
+      (push (aref str i) parts))
+    (mapconcat (lambda (x) (format "%02x" x))
+	       (reverse parts) "")))
+
 (defun plantuml-server-encode-url (string)
   "Encode the string STRING into a URL suitable for PlantUML server interactions."
   (let* ((coding-system (or buffer-file-coding-system
                             "utf8"))
-         (encoded-string (base64-encode-string (encode-coding-string string coding-system) t)))
-    (concat plantuml-server-url "/" plantuml-output-type "/-base64-" encoded-string)))
+         (encoded-string (plantuml--hex-encode-string (encode-coding-string string coding-system))))
+    (concat plantuml-server-url "/" plantuml-output-type "/-h" encoded-string)))
 
 (defun plantuml-server-preview-string (prefix string buf)
   "Preview the diagram from STRING as rendered by the PlantUML server.
